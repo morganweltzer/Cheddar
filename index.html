@@ -193,13 +193,15 @@ function buildLevel() {
   block(166, 3.5, 22, 1);
   spike(171); hang(175, 2.5); hang(176, 2.5); spikes(180, 2); hang(184, 2.5); hang(185, 2.5);
   // 6. Crate climb
-  block(194, 0, 2, 1); spikes(196, 2);
-  block(198, 0, 2, 2); spikes(200, 2);
-  block(202, 0, 2, 3); spikes(204, 4);
+  // three-crate-wide pillars give a beat to settle before each hop
+  block(194, 0, 3, 1); spikes(197, 2);
+  block(199, 0, 3, 2); spikes(202, 2);
+  block(204, 0, 3, 3); spikes(207, 3);
   // 7. Finale: trampoline, ball, high shelf
-  pad(212); orb(217, 3); block(221, 3, 5, 1); spikes(213, 16);
-  spikes(234, 2);
-  L.cheeseX = 242; L.end = 242;
+  // the ball sits at the top of the trampoline's arc, so bounce, tap, and land on the shelf
+  pad(215); orb(217.5, 3.5); block(221, 3, 5, 1); spikes(216, 13);
+  spikes(237, 2);
+  L.cheeseX = 245; L.end = 245;
 
   const ps = [...L.pits].sort((a, b) => a.x - b.x);
   let gx = -40;
