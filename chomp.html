@@ -35,9 +35,9 @@ body{
   border:4px solid var(--ink);box-shadow:0 0 0 4px var(--frame),0 14px 0 4px rgba(0,0,0,.35);background:var(--ink);
 }
 canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
-.corner{position:absolute;top:1.2cqh;right:2cqw;display:flex;gap:1.6cqw}
+.corner{position:absolute;bottom:1cqh;right:2cqw;display:flex;gap:1.4cqw}
 .icon-btn{
-  font:400 clamp(12px,4.2cqw,22px)/1 var(--font);color:var(--cream);background:rgba(14,20,44,.75);
+  font:400 clamp(11px,3.9cqw,20px)/1 var(--font);color:var(--cream);background:rgba(14,20,44,.75);
   border:2px solid var(--cream);padding:.2em .5em;cursor:pointer;letter-spacing:.06em;
 }
 .icon-btn:focus-visible,.btn:focus-visible,.pad-btn:focus-visible{outline:3px dashed var(--cheddar);outline-offset:3px}
@@ -73,22 +73,32 @@ canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rend
 .pad-btn.on{background:var(--cheddar);color:var(--ink);border-color:var(--rind)}
 .pad-btn svg{width:46%;height:46%;fill:currentColor}
 .pad-up{grid-column:2;grid-row:1}.pad-left{grid-column:1;grid-row:2}.pad-right{grid-column:3;grid-row:2}.pad-down{grid-column:2;grid-row:3}
+.touch-only{display:none}
 @media (pointer:coarse){
-  body{justify-content:space-evenly}
+  /* Phones: the maze runs edge to edge and swipes steer; the arrow pad is optional */
+  body{padding-inline:0;gap:0;padding-block:env(safe-area-inset-top, 0px) env(safe-area-inset-bottom, 0px)}
   .help{display:none}
-  .dpad{display:grid}
-  .stage{width:min(100%, calc((100vh - 290px) * 294 / 344));width:min(100%, calc((100dvh - 290px) * 294 / 344));border-width:3px;box-shadow:0 0 0 3px var(--frame)}
+  .touch-only{display:block}
+  .icon-btn.touch-only{display:inline-block}
+  .swipe-hint{color:#6b4a5c}
+  .stage{border:0;box-shadow:none;width:min(100vw, calc(100vh * 294 / 344));width:min(100vw, calc(100dvh * 294 / 344))}
+  body.pad{gap:10px;justify-content:space-evenly}
+  body.pad .dpad{display:grid}
+  body.pad .stage{width:min(100vw, calc((100vh - 250px) * 294 / 344));width:min(100vw, calc((100dvh - 250px) * 294 / 344))}
+  .icon-btn.on{background:var(--cheddar);color:var(--ink);border-color:var(--ink)}
 }
 @media (pointer:coarse) and (orientation:landscape){
-  body{flex-direction:row;gap:5vw}
-  .stage{width:auto;height:calc(100vh - 24px);height:calc(100dvh - 24px)}
+  body{flex-direction:row;gap:4vw}
+  .stage{width:auto;height:100vh;height:100dvh}
+  body.pad .stage{width:auto;height:100vh;height:100dvh}
   .dpad{--b:min(70px,17vh)}
 }
 </style>
 
 <div class="stage" id="stage">
-  <canvas id="game" width="294" height="344" aria-label="Cheddar Chomp game screen"></canvas>
+  <canvas id="game" width="588" height="688" aria-label="Cheddar Chomp game screen"></canvas>
   <div class="corner">
+    <button class="icon-btn touch-only" id="padBtn" type="button" aria-pressed="false" aria-label="Show arrow pad">PAD</button>
     <button class="icon-btn" id="muteBtn" type="button" aria-label="Mute sound">SOUND</button>
     <button class="icon-btn" id="pauseBtn" type="button" aria-label="Pause">PAUSE</button>
   </div>
@@ -97,6 +107,7 @@ canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rend
       <h1>Cheddar <span>Chomp</span></h1>
       <p>Cheddar is loose in the dog-park hedge maze after dark. Gobble every bit of kibble before the Macs catch him.</p>
       <div class="legend" id="legend"></div>
+      <p class="touch-only swipe-hint">Swipe anywhere to steer.</p>
       <button class="btn" id="playBtn" type="button">Play</button>
       <div class="stats" id="highLine">High score: 0</div>
     </div>
@@ -157,6 +168,7 @@ const MAZE = [
   "#...................#",
   "#####################",
 ];
+const SCALE = 2, BIG = 1.5; // canvas renders at 2x; characters draw 1.5x the maze's pixel size
 const COLS = 21, ROWS = 21, T = 14, HUD_T = 26, HUD_B = 24, W = COLS * T, H = ROWS * T + HUD_T + HUD_B;
 const START = { c: 10, r: 15 }, DOOR = { c: 10, r: 8 }, OUTSIDE = { c: 10, r: 7 }, PEN_Y = 9;
 function cell(c, r) { if (r < 0 || r >= ROWS) return "#"; c = ((c % COLS) + COLS) % COLS; return MAZE[r][c]; }
@@ -229,26 +241,40 @@ IMG.ball = (() => {
   }
   return c;
 })();
+// Hedges are drawn as narrow borders along the sides of each wall block that face a path,
+// so corridors read wide and dark, with the wall interiors left almost empty.
+const BAND = 4;
 function buildMaze(flash) {
   const c = mk(W, ROWS * T), x = c.getContext("2d");
   x.fillStyle = "#121a38"; x.fillRect(0, 0, W, ROWS * T);
+  const isOpen = (q, r) => { const n = cell(q, r); return n !== "#" && n !== "_" && n !== "-"; };
+  const GREEN = flash ? "#e9e0ee" : "#3f8a3a", LIGHT = flash ? "#ffffff" : "#7fd05a", DARK = flash ? "#b9a6c0" : "#24552a", INNER = flash ? "#2a3560" : "#0d1430";
   for (let r = 0; r < ROWS; r++) for (let q = 0; q < COLS; q++) {
     const ch = MAZE[r][q], X = q * T, Y = r * T;
-    if (ch === "_") continue;
-    if (ch !== "#") { if ((q + r) % 2 === 0) { x.fillStyle = "#151f40"; x.fillRect(X, Y, T, T); } }
     if (ch === "-") { x.fillStyle = "#3a2420"; x.fillRect(X, Y + 5, T, 4); x.fillStyle = "#c98a4b"; x.fillRect(X, Y + 6, T, 2); continue; }
     if (ch !== "#") continue;
-    const open = (a, b) => { const n = cell(q + a, r + b); return n !== "#" && n !== "_"; };
-    x.fillStyle = flash ? "#e9e0ee" : "#2f6a34"; x.fillRect(X, Y, T, T);
+    const o = (a, b) => isOpen(q + a, r + b);
+    x.fillStyle = INNER; x.fillRect(X, Y, T, T);
     let seed = (q * 73 + r * 151) % 997;
     const rnd = () => (seed = (seed * 167 + 13) % 997) / 997;
-    for (let k = 0; k < 7; k++) { x.fillStyle = flash ? "#ffffff" : (k % 2 ? "#3f8a3a" : "#24552a"); x.fillRect(X + (rnd() * 12 | 0), Y + (rnd() * 12 | 0), 2, 2); }
-    x.fillStyle = flash ? "#ffffff" : "#6cc04a";
-    if (open(0, -1)) x.fillRect(X, Y, T, 2);
-    x.fillStyle = flash ? "#b9a6c0" : "#1a4020";
-    if (open(0, 1)) x.fillRect(X, Y + T - 2, T, 2);
-    if (open(-1, 0)) x.fillRect(X, Y, 1, T);
-    if (open(1, 0)) x.fillRect(X + T - 1, Y, 1, T);
+    const band = (bx, by, bw, bh, edge) => {
+      x.fillStyle = GREEN; x.fillRect(bx, by, bw, bh);
+      for (let k = 0; k < 3; k++) { x.fillStyle = k % 2 ? DARK : LIGHT; x.fillRect(bx + (rnd() * (bw - 1) | 0), by + (rnd() * (bh - 1) | 0), 1, 1); }
+      x.fillStyle = LIGHT;
+      if (edge === "t") x.fillRect(bx, by, bw, 1);
+      if (edge === "b") { x.fillStyle = DARK; x.fillRect(bx, by + bh - 1, bw, 1); }
+      if (edge === "l") x.fillRect(bx, by, 1, bh);
+      if (edge === "r") { x.fillStyle = DARK; x.fillRect(bx + bw - 1, by, 1, bh); }
+    };
+    if (o(0, -1)) band(X, Y, T, BAND, "t");
+    if (o(0, 1)) band(X, Y + T - BAND, T, BAND, "b");
+    if (o(-1, 0)) band(X, Y, BAND, T, "l");
+    if (o(1, 0)) band(X + T - BAND, Y, BAND, T, "r");
+    // inner corners, so bands meet around bends
+    if (!o(0, -1) && !o(-1, 0) && o(-1, -1)) band(X, Y, BAND, BAND, "");
+    if (!o(0, -1) && !o(1, 0) && o(1, -1)) band(X + T - BAND, Y, BAND, BAND, "");
+    if (!o(0, 1) && !o(-1, 0) && o(-1, 1)) band(X, Y + T - BAND, BAND, BAND, "");
+    if (!o(0, 1) && !o(1, 0) && o(1, 1)) band(X + T - BAND, Y + T - BAND, BAND, BAND, "");
   }
   return c;
 }
@@ -559,6 +585,16 @@ $("resumeBtn").onclick = resume;
 $("quitBtn").onclick = toTitle;
 $("overTitleBtn").onclick = toTitle;
 muteBtn.onclick = () => { audio(); setMuted(!muted); };
+// Optional on-screen arrow pad for phones (swipes always work); remembered on this device
+const padBtn = $("padBtn");
+function setPad(on) {
+  document.body.classList.toggle("pad", on);
+  padBtn.classList.toggle("on", on); padBtn.setAttribute("aria-pressed", String(on));
+  padBtn.setAttribute("aria-label", on ? "Hide arrow pad" : "Show arrow pad");
+  try { localStorage.setItem("cheddar-chomp-pad", on ? "1" : "0"); } catch (e) {}
+}
+padBtn.onclick = () => setPad(!document.body.classList.contains("pad"));
+try { if (localStorage.getItem("cheddar-chomp-pad") === "1") setPad(true); } catch (e) {}
 $("pauseBtn").onclick = () => (G.mode === "paused" ? resume() : pause());
 canvas.tabIndex = 0;
 
@@ -573,19 +609,19 @@ function drawCorgi() {
   let frame = p.moving ? Math.floor(p.anim / .09) % 2 : 0;
   const img = IMG.corgi[frame];
   ctx.save();
-  ctx.translate(Math.round(p.x), Math.round(p.y + HUD_T));
+  ctx.translate(half(p.x), half(p.y + HUD_T));
   if (G.mode === "dying" && G.t > .6) {
     const k = Math.min(1, (G.t - .6) / 1.2);
     ctx.rotate(k * Math.PI * 4);
     ctx.globalAlpha = 1 - Math.max(0, k - .7) / .3;
   }
   if (p.face < 0) ctx.scale(-1, 1);
-  ctx.drawImage(img, -7, -6);
+  ctx.drawImage(img, -img.width * BIG / 2, -8, img.width * BIG, img.height * BIG);
   ctx.restore();
   if (G.mode === "dying" && G.t > .6) {
     for (let i = 0; i < 3; i++) {
       const a = G.time * 5 + i * 2.1;
-      ctx.drawImage(IMG.star, Math.round(p.x + Math.cos(a) * 9) - 2, Math.round(p.y + HUD_T - 9 + Math.sin(a) * 3) - 2);
+      ctx.drawImage(IMG.star, half(p.x + Math.cos(a) * 12) - 3.5, half(p.y + HUD_T - 12 + Math.sin(a) * 4) - 3.5, 7.5, 7.5);
     }
   }
 }
@@ -595,12 +631,14 @@ function drawMac(m) {
   const img = set[(m.state === "pen" || Math.floor(m.anim / .14) % 2 === 0) ? 0 : 1];
   ctx.save();
   if (m.state === "eaten" || m.state === "entering") ctx.globalAlpha = .35;
-  ctx.translate(Math.round(m.x), Math.round(m.y + HUD_T));
+  ctx.translate(half(m.x), half(m.y + HUD_T));
   if (m.dx > 0) ctx.scale(-1, 1);
-  ctx.drawImage(img, -6, 7 - img.height);
+  ctx.drawImage(img, -img.width * BIG / 2, 8 - img.height * BIG, img.width * BIG, img.height * BIG);
   ctx.restore();
 }
+const half = v => Math.round(v * SCALE) / SCALE;
 function render() {
+  ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
   ctx.fillStyle = "#121a38"; ctx.fillRect(0, 0, W, H);
   const flash = G.mode === "clear" && Math.floor(G.t * 5) % 2 === 1;
   ctx.drawImage(flash ? MAZE_FLASH : MAZE_IMG, 0, HUD_T);
@@ -609,13 +647,13 @@ function render() {
     const d = dots && dots[r][c]; if (!d) continue;
     const X = c * T, Y = r * T + HUD_T;
     if (d === ".") {
-      ctx.fillStyle = "#a8703c"; ctx.fillRect(X + 6, Y + 6, 3, 3);
-      ctx.fillStyle = "#e0aa6c"; ctx.fillRect(X + 6, Y + 6, 2, 2);
-    } else if (Math.floor(G.time * 4) % 2 === 0 || G.mode !== "play") ctx.drawImage(IMG.ball, X + 2, Y + 2);
+      ctx.fillStyle = "#a8703c"; ctx.fillRect(X + 5.5, Y + 5.5, 3.5, 3.5);
+      ctx.fillStyle = "#e0aa6c"; ctx.fillRect(X + 5.5, Y + 5.5, 2.5, 2.5);
+    } else if (Math.floor(G.time * 4) % 2 === 0 || G.mode !== "play") ctx.drawImage(IMG.ball, X - .5, Y - .5, 15, 15);
   }
   if (G.bone) {
     const bob = Math.round(Math.sin(G.time * 5) * 1);
-    ctx.drawImage(IMG.bone, center(START.c) - 6, center(START.r) + HUD_T - 3 + bob);
+    ctx.drawImage(IMG.bone, center(START.c) - 9, center(START.r) + HUD_T - 4.5 + bob, 18, 9);
   }
   const hideMacs = G.mode === "dying" && G.t > .6 || G.mode === "clear";
   const actors = [];
@@ -627,12 +665,15 @@ function render() {
   if (G.mode === "ready" && G.readyLabel) text("LEVEL " + G.level, W / 2, 11 * T + HUD_T + 1, 18, "#ffc93c", "center");
   // HUD
   text("SCORE " + G.score, 6, 4, 18, "#fff4e2");
-  text("HIGH " + Math.max(G.high, G.score), Math.round(W * .52), 4, 18, "#ffc93c", "center");
+  text("HIGH " + Math.max(G.high, G.score), W - 6, 4, 18, "#ffc93c", "right");
   const by = H - HUD_B + 5;
-  for (let i = 0; i < Math.min(G.lives, 7); i++) ctx.drawImage(IMG.cheese, 6 + i * 13, by + 2);
-  const shown = bones.slice(-6);
-  shown.forEach((_, i) => ctx.drawImage(IMG.bone, W - 18 - i * 15, by + 4));
-  if (G.mode !== "title") text("LV " + G.level, W - 20 - shown.length * 15, by - 2, 16, "#b3c1e0", "right");
+  // bottom bar: cheese lives, then level and bones collected; the buttons sit on the right
+  const lives = Math.min(G.lives, 5);
+  for (let i = 0; i < lives; i++) ctx.drawImage(IMG.cheese, 6 + i * 17, by, 15, 12);
+  let bx = 10 + lives * 17;
+  if (G.lives > 5) { text("x" + G.lives, bx, by - 2, 16, "#ffd04a"); bx += 18; }
+  if (G.mode !== "title") { text("LV " + G.level, bx, by - 2, 16, "#b3c1e0"); bx += 26; }
+  bones.slice(-3).forEach((_, i) => ctx.drawImage(IMG.bone, bx + i * 14, by + 4));
 }
 let acc = 0, last = 0;
 function loop(ts) {
