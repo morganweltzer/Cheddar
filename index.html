@@ -4,7 +4,7 @@
 <meta name="description" content="Help Cheddar the pixel corgi run the Cincinnati riverfront to find his cheese.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jersey+10&display=swap">
 <style>
 /* Layout: one 16:9 pixel stage centred on a blue-hour field; on phones it fills a sideways screen, or sits above a big tap pad when upright */
 :root{
@@ -16,7 +16,7 @@
   --rind:#d9821c;       /* button depth */
   --grass:#6cc04a;      /* secondary action */
   --muted:#b3c1e0;      /* help text */
-  --font-display:"Pixelify Sans", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display:"Jersey 10", ui-monospace, "SF Mono", Menlo, monospace;
   color-scheme:dark;
 }
 html,body{height:100%;overscroll-behavior:none}
@@ -37,7 +37,7 @@ body{
 canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none;cursor:pointer}
 .corner{position:absolute;bottom:2cqh;right:1.6cqw;display:flex;gap:1cqw}
 .icon-btn{
-  font:600 clamp(9px,1.8cqw,16px)/1 var(--font-display);color:var(--cream);background:rgba(14,20,44,.55);
+  font:400 clamp(11.7px,2.3cqw,20.8px)/1 var(--font-display);color:var(--cream);background:rgba(14,20,44,.55);
   border:2px solid var(--cream);padding:.35em .6em;cursor:pointer;letter-spacing:.06em;
 }
 .icon-btn:hover{background:rgba(14,20,44,.8)}
@@ -47,15 +47,15 @@ canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rend
   background:var(--cream);color:var(--ink);border:4px solid var(--ink);box-shadow:8px 8px 0 var(--ink);
   padding:4cqh 4.5cqw;text-align:center;max-width:62cqw;display:flex;flex-direction:column;align-items:center;gap:2.4cqh;
 }
-.panel h1,.panel h2{margin:0;font-weight:700;line-height:.95;text-wrap:balance}
-.panel h1{font-size:clamp(26px,8.4cqw,84px);color:var(--ink);letter-spacing:.01em}
+.panel h1,.panel h2{margin:0;font-weight:400;line-height:.95;text-wrap:balance}
+.panel h1{font-size:clamp(33.8px,10.9cqw,109.2px);color:var(--ink);letter-spacing:.01em}
 .panel h1 span{color:var(--rind)}
-.panel h2{font-size:clamp(20px,5.6cqw,56px)}
-.panel p{margin:0;font-size:clamp(11px,2.3cqw,21px);line-height:1.3;max-width:48ch}
-.panel .stats{font-size:clamp(11px,2.3cqw,20px);letter-spacing:.06em;text-transform:uppercase;color:#6b4a5c}
+.panel h2{font-size:clamp(26px,7.3cqw,72.8px)}
+.panel p{margin:0;font-size:clamp(14.3px,3cqw,27.3px);line-height:1.3;max-width:48ch}
+.panel .stats{font-size:clamp(14.3px,3cqw,26px);letter-spacing:.06em;text-transform:uppercase;color:#6b4a5c}
 .row{display:flex;gap:2cqw;flex-wrap:wrap;justify-content:center}
 .btn{
-  font:700 clamp(12px,2.8cqw,26px)/1 var(--font-display);color:var(--ink);background:var(--cheddar);
+  font:400 clamp(15.6px,3.6cqw,33.8px)/1 var(--font-display);color:var(--ink);background:var(--cheddar);
   border:3px solid var(--ink);box-shadow:0 5px 0 var(--rind),0 5px 0 3px var(--ink);
   padding:.55em 1.2em;cursor:pointer;letter-spacing:.04em;transition:transform .06s;
 }
@@ -63,15 +63,15 @@ canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rend
 .btn:active{transform:translateY(3px);box-shadow:0 2px 0 var(--rind),0 2px 0 3px var(--ink)}
 .btn.alt{background:var(--grass);box-shadow:0 5px 0 #3d7a3a,0 5px 0 3px var(--ink)}
 .btn.ghost{background:transparent;box-shadow:none;border-style:dashed}
-.help{margin:0;font-size:clamp(12px,1.6vw,16px);color:var(--muted);letter-spacing:.05em;text-align:center;line-height:1.5;max-width:70ch}
+.help{margin:0;font-size:clamp(15.6px,2.1vw,20.8px);color:var(--muted);letter-spacing:.05em;text-align:center;line-height:1.5;max-width:70ch}
 .help kbd{font:inherit;color:var(--cream);border:2px solid var(--plum);padding:0 .35em;background:var(--plum)}
 .touch-only{display:none}
 @media (max-width:560px){ .panel p.long{display:none} .panel{gap:1.6cqh} .panel .stats{margin-top:.4em} }
 @media (pointer:coarse){
   .key-only{display:none}
   .touch-only{display:inline}
-  .icon-btn{font-size:clamp(11px,2.6cqw,16px);padding:.55em .7em}
-  .btn{font-size:clamp(14px,3.2cqw,26px)}
+  .icon-btn{font-size:clamp(14.3px,3.4cqw,20.8px);padding:.55em .7em}
+  .btn{font-size:clamp(18.2px,4.2cqw,33.8px)}
 }
 /* Sideways phones and other short screens: give the stage all the height */
 @media (max-height:520px){
@@ -86,22 +86,22 @@ body.full .help{display:none}
 body.full .corner{bottom:calc(2.4cqh + env(safe-area-inset-bottom, 0px));right:calc(2.4cqw + env(safe-area-inset-right, 0px))}
 @container (orientation: portrait){
   .panel{max-width:86cqw;padding:6cqw;gap:3.6cqw;box-shadow:6px 6px 0 var(--ink)}
-  .panel h1{font-size:13cqw}
-  .panel h2{font-size:10cqw}
-  .panel p,.panel p.long{display:block;font-size:4.3cqw;line-height:1.35}
-  .panel .stats{font-size:3.6cqw}
+  .panel h1{font-size:16.9cqw}
+  .panel h2{font-size:13cqw}
+  .panel p,.panel p.long{display:block;font-size:5.6cqw;line-height:1.35}
+  .panel .stats{font-size:4.7cqw}
   .row{gap:3cqw}
-  .btn{font-size:5.4cqw}
-  .icon-btn{font-size:3.8cqw;padding:.7em .9em}
+  .btn{font-size:7cqw}
+  .icon-btn{font-size:4.9cqw;padding:.7em .9em}
 }
 @container (orientation: landscape) and (max-height: 500px){
   .panel{max-width:72cqw;padding:4cqh 4cqw;gap:3cqh}
-  .panel h1{font-size:15cqh}
-  .panel h2{font-size:11cqh}
-  .panel p,.panel p.long{display:block;font-size:4.6cqh}
-  .panel .stats{font-size:4.2cqh}
-  .btn{font-size:6.2cqh}
-  .icon-btn{font-size:4.4cqh}
+  .panel h1{font-size:19.5cqh}
+  .panel h2{font-size:14.3cqh}
+  .panel p,.panel p.long{display:block;font-size:6cqh}
+  .panel .stats{font-size:5.5cqh}
+  .btn{font-size:8.1cqh}
+  .icon-btn{font-size:5.7cqh}
 }
 </style>
 
@@ -690,8 +690,10 @@ function beginAttempt(fresh) {
     if (!G.practice || fresh || !music.on) startMusic();
   }
   G.cpTimer = 0;
-  G.mode = "play";
+  // Practice respawns hold still briefly so you can see where Cheddar is before the run resumes
+  if (G.practice && !fresh) { G.mode = "ready"; G.readyT = 0; } else G.mode = "play";
 }
+const READY_TIME = 1.0;
 function killRun() {
   G.mode = "dead"; G.deadT = 0; G.shake = reduceMotion ? 0 : 0.3;
   const pct = progress();
@@ -716,13 +718,13 @@ function winRun() {
 function progress() { return Math.max(0, Math.min(100, Math.floor(G.run.x / (LEVEL.cheeseX - PHYS.PW) * 100))); }
 
 function pause() {
-  if (G.mode !== "play" && G.mode !== "dead") return;
+  if (G.mode !== "play" && G.mode !== "dead" && G.mode !== "ready") return;
   G.prevMode = G.mode; G.mode = "paused"; stopMusic(); showOnly(pauseScreen); $("resumeBtn").focus();
 }
 function resume() {
   if (G.mode !== "paused") return;
   G.mode = G.prevMode || "play"; showOnly(null); release(); canvas.focus({ preventScroll: true });
-  if (G.mode === "play") { audio(); startMusic(); }
+  if (G.mode === "play" || G.mode === "ready") { audio(); startMusic(); }
 }
 function toTitle() { G.mode = "title"; stopMusic(); G.run = newRun(); showOnly(titleScreen); $("playBtn").focus(); }
 
@@ -755,7 +757,7 @@ window.addEventListener("keydown", e => {
     if (!e.repeat) { keyHeld = true; press(); }
   } else if (e.code === "KeyP" || e.code === "Escape") {
     if (G.mode === "paused") resume(); else pause();
-  } else if (e.code === "KeyR" && (G.mode === "play" || G.mode === "dead")) {
+  } else if (e.code === "KeyR" && (G.mode === "play" || G.mode === "dead" || G.mode === "ready")) {
     G.checkpoints = []; beginAttempt(true);
   } else if (e.code === "KeyM") setMuted(!muted);
 });
@@ -765,7 +767,7 @@ window.addEventListener("pointerdown", e => {
   if (e.target.closest && e.target.closest("button, .panel, a")) return;
   if (e.pointerType === "mouse" && e.button !== 0) return;
   audio();
-  if (G.mode !== "play" && G.mode !== "dead") return;
+  if (G.mode !== "play" && G.mode !== "dead" && G.mode !== "ready") return;
   e.preventDefault();
   pointers.add(e.pointerId);
   press();
@@ -835,6 +837,9 @@ function update(dt) {
       G.cpTimer += dt;
       if (G.cpTimer > 2.2 && G.run.ground && safeSpot(G.run)) { G.checkpoints.push(cloneRun(G.run)); G.cpTimer = 0; }
     }
+  } else if (G.mode === "ready") {
+    acc = 0; G.readyT += dt;
+    if (G.readyT >= READY_TIME) G.mode = "play";
   } else if (G.mode === "dead") {
     acc = 0; G.deadT += dt;
     if (G.deadT > .75) beginAttempt(false);
@@ -977,7 +982,7 @@ function drawLevel() {
   for (const s of LEVEL.signs) {
     if (!visible(s.x - 4, 8)) continue;
     const X = sx(s.x), Y = sy(s.y);
-    ctx.font = "600 13px 'Pixelify Sans', monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.font = "17px 'Jersey 10', monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillStyle = "#3a2420"; for (const [a, b] of [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1]]) ctx.fillText(s.text, X + a, Y + b);
     ctx.fillStyle = "#fff4e2"; ctx.fillText(s.text, X, Y);
   }
@@ -1047,6 +1052,8 @@ function drawCheese() {
 function drawCorgi() {
   const s = G.run;
   if (G.mode === "dead") return;
+  // blink while waiting to resume
+  if (G.mode === "ready" && Math.floor(G.readyT * 8) % 2) return;
   let img;
   if (G.mode === "won") img = IMG.corgiA;
   else if (!s.ground) img = IMG.corgiJ;
@@ -1076,7 +1083,7 @@ function drawParticles() {
   ctx.globalAlpha = 1;
 }
 function outlinedText(txt, x, y, size, fill, align = "left") {
-  ctx.font = `700 ${size}px 'Pixelify Sans', monospace`; ctx.textAlign = align; ctx.textBaseline = "top";
+  ctx.font = `${Math.round(size * 1.35)}px 'Jersey 10', monospace`; ctx.textAlign = align; ctx.textBaseline = "top";
   ctx.fillStyle = "#1e1420";
   for (const [a, b] of [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1], [2, 2]]) ctx.fillText(txt, x + a, y + b);
   ctx.fillStyle = fill; ctx.fillText(txt, x, y);
@@ -1103,9 +1110,17 @@ function drawHUD() {
     if (G.practice) outlinedText("PRACTICE", L, top + 14, 12, "#9ee06a");
   }
 }
-// Drawn inside the scene band: the attempt banner, and a tap hint in the dirt on tall screens
+// Drawn inside the scene band: the attempt banner, the practice "Ready" cue, and a tap hint on tall screens
 function drawSceneText() {
   if (G.mode === "title") return;
+  if (G.mode === "ready") {
+    const X = Math.round((G.run.x - G.camX) * T + 8), Y = Math.round(GY - G.run.y * T) - 44;
+    outlinedText(G.readyT < READY_TIME * .5 ? "READY" : "GO!", X, Y, 16, "#9ee06a", "center");
+    // a shrinking ring that marks Cheddar's spot
+    const r = Math.round(26 - 18 * (G.readyT / READY_TIME));
+    ctx.fillStyle = "rgba(158,224,106,.8)";
+    for (let a = 0; a < 28; a++) { const t = a / 28 * Math.PI * 2; ctx.fillRect(Math.round(X + Math.cos(t) * r), Math.round(Y + 36 + Math.sin(t) * r * .8), 2, 2); }
+  }
   const ax = sx(2);
   if (ax > -220 && (!G.practice || G.attempts === 1)) outlinedText("Attempt " + G.attempts, ax, 52, 24, "#fff4e2");
   const deep = CH - OY;
@@ -1188,7 +1203,7 @@ function start(data) {
   updateBestLine();
   layout();
   G.run = newRun(); G.camX = -PLAYER_COL;
-  if (document.fonts && document.fonts.load) document.fonts.load("700 12px 'Pixelify Sans'").catch(() => {});
+  if (document.fonts && document.fonts.load) document.fonts.load("16px 'Jersey 10'").catch(() => {});
   requestAnimationFrame(loop);
 }
 try { window.claude?.hot?.snapshot?.(() => ({ best: G.best })); } catch (e) {}
