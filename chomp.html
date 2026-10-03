@@ -1,0 +1,666 @@
+<title>Cheddar Chomp</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#121a33">
+<meta name="description" content="Help Cheddar the corgi gobble kibble in a night-time hedge maze while four little Macs chase him.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jersey+10&display=swap">
+<style>
+/* Layout: a portrait maze cabinet centred on a blue-hour field; phones get a thumb D-pad beneath (or beside, when sideways) */
+:root{
+  --night:#121a33;      /* page field */
+  --frame:#2a3a6a;      /* cabinet frame */
+  --cream:#fff4e2;      /* panels, text on dark */
+  --ink:#1e1420;        /* outlines, text on light */
+  --cheddar:#ffc93c;    /* primary action */
+  --rind:#d9821c;       /* button depth */
+  --hedge:#3f8a3a;      /* secondary accents */
+  --muted:#b3c1e0;      /* help text */
+  --font:"Jersey 10", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme:dark;
+}
+html,body{height:100%;overscroll-behavior:none}
+[hidden]{display:none!important}
+body{
+  margin:0;background:var(--night);color:var(--cream);font-family:var(--font);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  padding-inline:max(16px, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
+  padding-block:max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-bottom, 0px));
+  box-sizing:border-box;overflow:hidden;
+  touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
+}
+.stage{
+  position:relative;aspect-ratio:294/344;max-width:100%;container-type:size;touch-action:none;
+  width:min(100%, calc((100vh - 96px) * 294 / 344), 640px);width:min(100%, calc((100dvh - 96px) * 294 / 344), 640px);
+  border:4px solid var(--ink);box-shadow:0 0 0 4px var(--frame),0 14px 0 4px rgba(0,0,0,.35);background:var(--ink);
+}
+canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
+.corner{position:absolute;top:1.2cqh;right:2cqw;display:flex;gap:1.6cqw}
+.icon-btn{
+  font:400 clamp(12px,4.2cqw,22px)/1 var(--font);color:var(--cream);background:rgba(14,20,44,.75);
+  border:2px solid var(--cream);padding:.2em .5em;cursor:pointer;letter-spacing:.06em;
+}
+.icon-btn:focus-visible,.btn:focus-visible,.pad-btn:focus-visible{outline:3px dashed var(--cheddar);outline-offset:3px}
+.overlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(14,20,44,.6);padding:4cqw;box-sizing:border-box}
+.panel{
+  background:var(--cream);color:var(--ink);border:4px solid var(--ink);box-shadow:6px 6px 0 var(--ink);
+  padding:4.5cqw 5cqw;max-width:88cqw;max-height:94cqh;box-sizing:border-box;overflow:auto;text-align:center;display:flex;flex-direction:column;align-items:center;gap:2.6cqw;
+}
+.panel h1,.panel h2{margin:0;font-weight:400;line-height:.9;text-wrap:balance}
+.panel h1{font-size:clamp(26px,11.5cqw,80px);white-space:nowrap}
+.panel h1 span{color:var(--rind)}
+.panel h2{font-size:clamp(24px,10cqw,64px)}
+.panel p{margin:0;font-size:clamp(13px,4.6cqw,24px);line-height:1.1;max-width:34ch}
+.legend{display:grid;grid-template-columns:auto 1fr;gap:1cqw 3cqw;align-items:center;justify-items:start;text-align:left;font-size:clamp(12px,4.2cqw,22px);line-height:1}
+.legend canvas{width:auto;height:clamp(12px,4.6cqw,28px);justify-self:center}
+.stats{font-size:clamp(13px,4.6cqw,22px);letter-spacing:.06em;text-transform:uppercase;color:#6b4a5c}
+.btn{
+  font:400 clamp(16px,6.2cqw,34px)/1 var(--font);color:var(--ink);background:var(--cheddar);
+  border:3px solid var(--ink);box-shadow:0 5px 0 var(--rind),0 5px 0 3px var(--ink);
+  padding:.35em 1.3em;cursor:pointer;letter-spacing:.04em;transition:transform .06s;
+}
+.btn:hover{transform:translateY(-2px)}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 var(--rind),0 2px 0 3px var(--ink)}
+.btn.ghost{background:transparent;box-shadow:none;border-style:dashed}
+.row{display:flex;gap:3cqw;flex-wrap:wrap;justify-content:center}
+.help{margin:0;font-size:clamp(14px,1.7vw,18px);color:var(--muted);letter-spacing:.05em;text-align:center;line-height:1.4;max-width:60ch}
+.help kbd{font:inherit;color:var(--cream);border:2px solid var(--frame);padding:0 .35em;background:var(--frame)}
+.dpad{display:none;grid-template-columns:repeat(3,var(--b));grid-template-rows:repeat(3,var(--b));gap:6px;--b:min(76px,19vw);touch-action:none}
+.pad-btn{
+  font:400 30px/1 var(--font);color:var(--cream);background:#1f2b55;border:3px solid var(--frame);
+  border-radius:10px;touch-action:none;cursor:pointer;display:grid;place-items:center;
+}
+.pad-btn.on{background:var(--cheddar);color:var(--ink);border-color:var(--rind)}
+.pad-btn svg{width:46%;height:46%;fill:currentColor}
+.pad-up{grid-column:2;grid-row:1}.pad-left{grid-column:1;grid-row:2}.pad-right{grid-column:3;grid-row:2}.pad-down{grid-column:2;grid-row:3}
+@media (pointer:coarse){
+  body{justify-content:space-evenly}
+  .help{display:none}
+  .dpad{display:grid}
+  .stage{width:min(100%, calc((100vh - 290px) * 294 / 344));width:min(100%, calc((100dvh - 290px) * 294 / 344));border-width:3px;box-shadow:0 0 0 3px var(--frame)}
+}
+@media (pointer:coarse) and (orientation:landscape){
+  body{flex-direction:row;gap:5vw}
+  .stage{width:auto;height:calc(100vh - 24px);height:calc(100dvh - 24px)}
+  .dpad{--b:min(70px,17vh)}
+}
+</style>
+
+<div class="stage" id="stage">
+  <canvas id="game" width="294" height="344" aria-label="Cheddar Chomp game screen"></canvas>
+  <div class="corner">
+    <button class="icon-btn" id="muteBtn" type="button" aria-label="Mute sound">SOUND</button>
+    <button class="icon-btn" id="pauseBtn" type="button" aria-label="Pause">PAUSE</button>
+  </div>
+  <div class="overlay" id="titleScreen">
+    <div class="panel">
+      <h1>Cheddar <span>Chomp</span></h1>
+      <p>Cheddar is loose in the dog-park hedge maze after dark. Gobble every bit of kibble before the Macs catch him.</p>
+      <div class="legend" id="legend"></div>
+      <button class="btn" id="playBtn" type="button">Play</button>
+      <div class="stats" id="highLine">High score: 0</div>
+    </div>
+  </div>
+  <div class="overlay" id="pauseScreen" hidden>
+    <div class="panel">
+      <h2>Paused</h2>
+      <div class="row">
+        <button class="btn" id="resumeBtn" type="button">Resume</button>
+        <button class="btn ghost" id="quitBtn" type="button">Title</button>
+      </div>
+    </div>
+  </div>
+  <div class="overlay" id="overScreen" hidden>
+    <div class="panel">
+      <h2 id="overTitle">The Macs got him!</h2>
+      <p id="overText"></p>
+      <div class="stats" id="overStats"></div>
+      <div class="row">
+        <button class="btn" id="againBtn" type="button">Play again</button>
+        <button class="btn ghost" id="overTitleBtn" type="button">Title</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="dpad" id="dpad" aria-label="Direction pad">
+  <button class="pad-btn pad-up" data-dir="up" type="button" aria-label="Up"><svg viewBox="0 0 10 10"><path d="M5 1 9 8H1z"/></svg></button>
+  <button class="pad-btn pad-left" data-dir="left" type="button" aria-label="Left"><svg viewBox="0 0 10 10"><path d="M1 5 8 1v8z"/></svg></button>
+  <button class="pad-btn pad-right" data-dir="right" type="button" aria-label="Right"><svg viewBox="0 0 10 10"><path d="M9 5 2 1v8z"/></svg></button>
+  <button class="pad-btn pad-down" data-dir="down" type="button" aria-label="Down"><svg viewBox="0 0 10 10"><path d="M5 9 9 2H1z"/></svg></button>
+</div>
+<p class="help">Arrow keys or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to steer. Press a turn early and Cheddar takes it at the next gap. <kbd>P</kbd> pause &middot; <kbd>M</kbd> mute</p>
+
+<script>
+"use strict";
+/* ---------------- Maze ---------------- */
+// # hedge   . kibble   o tennis ball   - gate   G inside the Macs' pen   _ outside the maze   space open path
+const MAZE = [
+  "#####################",
+  "#.........#.........#",
+  "#o###.###.#.###.###o#",
+  "#...................#",
+  "#.###.#.#####.#.###.#",
+  "#.....#...#...#.....#",
+  "#####.### # ###.#####",
+  "____#.#       #.#____",
+  "#####.# ##-## #.#####",
+  "     .  #GGG#  .     ",
+  "#####.# ##### #.#####",
+  "____#.#       #.#____",
+  "#####.# ##### #.#####",
+  "#.........#.........#",
+  "#.###.###.#.###.###.#",
+  "#o..#.....P.....#..o#",
+  "###.#.#.#####.#.#.###",
+  "#.....#...#...#.....#",
+  "#.#######.#.#######.#",
+  "#...................#",
+  "#####################",
+];
+const COLS = 21, ROWS = 21, T = 14, HUD_T = 26, HUD_B = 24, W = COLS * T, H = ROWS * T + HUD_T + HUD_B;
+const START = { c: 10, r: 15 }, DOOR = { c: 10, r: 8 }, OUTSIDE = { c: 10, r: 7 }, PEN_Y = 9;
+function cell(c, r) { if (r < 0 || r >= ROWS) return "#"; c = ((c % COLS) + COLS) % COLS; return MAZE[r][c]; }
+const solid = ch => ch === "#" || ch === "_" || ch === "-" || ch === "G";
+const blocked = (c, r) => solid(cell(c, r));
+const inTunnel = (c, r) => r === 9 && (c < 5 || c > 15);
+
+/* ---------------- Pixel art ---------------- */
+const PAL = {
+  o: "#e8893a", d: "#c4652a", w: "#fff4e2", n: "#1c1212", p: "#f497ac",
+  h: "#5a3418", H: "#7a4a26", s: "#f2c9a5", S: "#d9a682", e: "#1c1212", E: "#ffffff", m: "#a8524a",
+  c: "#d8443a", C: "#a83030", j: "#2f4675", b: "#2a2030", B: "#fff4e2", g: "#d9c8a8",
+  y: "#ffd04a", l: "#ffe58a", a: "#d48a1e", k: "#1e1420",
+};
+const SPR = {
+  corgiA: ["........o..o", "........oooo", "........onow", ".oooooooowwn", "woooooooowww", "wwoooooowww.", "wwwwwwwwww..", ".ww.....ww..", ".w......w..."],
+  corgiB: ["........o..o", "........oooo", "........onow", ".oooooooowwn", "woooooooow..", "wwoooooowwww", "wwwwwwwwww..", "..ww...ww...", "..w....w...."],
+  macA: ["..hhhhhh..", ".hhHHhhhhh", ".hhhhhhhhh", ".hsssssshh", ".sEessEes.", ".ssssssss.", "..ssmmss..", "...ssss...", "....ss....", "..cccccc..", ".cccccccc.", ".ccCccCcc.", ".cccccccc.", ".cccccccc.", ".sjjjjjjs.", "..jjjjjj..", "..jjj.jjj.", "..jj...jj.", ".bbb..bbb."],
+  macB: ["..hhhhhh..", ".hhHHhhhhh", ".hhhhhhhhh", ".hsssssshh", ".sEessEes.", ".ssssssss.", "..ssmmss..", "...ssss...", "....ss....", "..cccccc..", ".cccccccc.", ".ccCccCcc.", ".cccccccc.", ".cccccccc.", ".sjjjjjjs.", "..jjjjjj..", "...jjjjj..", "...jj.jj..", "..bbb.bbb."],
+  bone: ["BB......BB", "BBBBBBBBBB", "BggggggggB", "BB......BB"],
+  cheese: ["......yy", "....yyly", "..yylyyy", "llllllll", "yyayyyay", "aaaaaaaa"],
+  star: ["..y..", ".yly.", "yllly", ".yly.", "..y.."],
+};
+function outline(rows) {
+  const h = rows.length, w = rows[0].length, out = [];
+  for (let j = -1; j <= h; j++) {
+    let line = "";
+    for (let i = -1; i <= w; i++) {
+      const ch = (rows[j] || "")[i];
+      if (ch && ch !== ".") { line += ch; continue; }
+      let near = false;
+      for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const c2 = (rows[j + b] || "")[i + a]; if (c2 && c2 !== ".") near = true; }
+      line += near ? "k" : ".";
+    }
+    out.push(line);
+  }
+  return out;
+}
+function mk(w, h) { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; }
+function paint(rows, pal = PAL) {
+  const c = mk(rows[0].length, rows.length), x = c.getContext("2d");
+  rows.forEach((r, j) => [...r].forEach((ch, i) => { if (ch !== ".") { x.fillStyle = pal[ch] || "#f0f"; x.fillRect(i, j, 1, 1); } }));
+  return c;
+}
+const IMG = {};
+IMG.corgi = [paint(outline(SPR.corgiA)), paint(outline(SPR.corgiB))];
+IMG.bone = paint(outline(SPR.bone));
+IMG.cheese = paint(outline(SPR.cheese));
+IMG.star = paint(SPR.star);
+// Four Macs, told apart by shirt colour
+const MACS = [
+  { name: "Mac", shirt: "#d8443a", dark: "#a83030" },
+  { name: "Mac", shirt: "#9a6ad8", dark: "#6e48a8" },
+  { name: "Mac", shirt: "#3fb7a8", dark: "#2a8a7e" },
+  { name: "Mac", shirt: "#f09a3a", dark: "#c06f1c" },
+];
+const macSprites = (shirt, dark, extra = {}) => [SPR.macA, SPR.macB].map(r => paint(outline(r), { ...PAL, c: shirt, C: dark, ...extra }));
+MACS.forEach(m => { m.img = macSprites(m.shirt, m.dark); });
+IMG.scared = macSprites("#3d5fd0", "#2a4498", { m: "#1c1212", s: "#e8d6e0" });
+IMG.flash = macSprites("#fff4e2", "#c9b5cf", { m: "#1c1212", s: "#e8d6e0" });
+IMG.ball = (() => {
+  const c = mk(10, 10), x = c.getContext("2d");
+  for (let j = 0; j < 10; j++) for (let i = 0; i < 10; i++) {
+    const dx = i + .5 - 5, dy = j + .5 - 5, d = Math.hypot(dx, dy);
+    if (d > 4.9) continue;
+    if (d > 4) { x.fillStyle = "#1e1420"; x.fillRect(i, j, 1, 1); continue; }
+    const seam = Math.abs(Math.sin(Math.atan2(dy, dx) * 2) * 3.2 - d) < .7 && d > 1.5;
+    x.fillStyle = seam ? "#fff4e2" : (dx + dy < -2 ? "#f0ff8a" : dx + dy > 3 ? "#9fc02a" : "#d4ef3c");
+    x.fillRect(i, j, 1, 1);
+  }
+  return c;
+})();
+function buildMaze(flash) {
+  const c = mk(W, ROWS * T), x = c.getContext("2d");
+  x.fillStyle = "#121a38"; x.fillRect(0, 0, W, ROWS * T);
+  for (let r = 0; r < ROWS; r++) for (let q = 0; q < COLS; q++) {
+    const ch = MAZE[r][q], X = q * T, Y = r * T;
+    if (ch === "_") continue;
+    if (ch !== "#") { if ((q + r) % 2 === 0) { x.fillStyle = "#151f40"; x.fillRect(X, Y, T, T); } }
+    if (ch === "-") { x.fillStyle = "#3a2420"; x.fillRect(X, Y + 5, T, 4); x.fillStyle = "#c98a4b"; x.fillRect(X, Y + 6, T, 2); continue; }
+    if (ch !== "#") continue;
+    const open = (a, b) => { const n = cell(q + a, r + b); return n !== "#" && n !== "_"; };
+    x.fillStyle = flash ? "#e9e0ee" : "#2f6a34"; x.fillRect(X, Y, T, T);
+    let seed = (q * 73 + r * 151) % 997;
+    const rnd = () => (seed = (seed * 167 + 13) % 997) / 997;
+    for (let k = 0; k < 7; k++) { x.fillStyle = flash ? "#ffffff" : (k % 2 ? "#3f8a3a" : "#24552a"); x.fillRect(X + (rnd() * 12 | 0), Y + (rnd() * 12 | 0), 2, 2); }
+    x.fillStyle = flash ? "#ffffff" : "#6cc04a";
+    if (open(0, -1)) x.fillRect(X, Y, T, 2);
+    x.fillStyle = flash ? "#b9a6c0" : "#1a4020";
+    if (open(0, 1)) x.fillRect(X, Y + T - 2, T, 2);
+    if (open(-1, 0)) x.fillRect(X, Y, 1, T);
+    if (open(1, 0)) x.fillRect(X + T - 1, Y, 1, T);
+  }
+  return c;
+}
+const MAZE_IMG = buildMaze(false), MAZE_FLASH = buildMaze(true);
+
+/* ---------------- Audio ---------------- */
+let AC = null, master = null, muted = false;
+function audio() {
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); master = AC.createGain(); master.gain.value = muted ? 0 : .22; master.connect(AC.destination); } catch (e) { AC = null; } }
+  if (AC && AC.state === "suspended") AC.resume();
+  return AC;
+}
+function tone(f, dur, type = "square", vol = .2, at = 0, slide = null) {
+  if (!AC) return;
+  const t = at || AC.currentTime, o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0008, t + dur);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .02);
+}
+const midi = n => 440 * Math.pow(2, (n - 69) / 12);
+let wakaFlip = false;
+const SFX = {
+  waka() { wakaFlip = !wakaFlip; tone(wakaFlip ? 300 : 460, .07, "square", .06, 0, wakaFlip ? 460 : 300); },
+  ball() { tone(220, .25, "triangle", .3, 0, 660); },
+  siren() { tone(520, .16, "triangle", .07, 0, 340); },
+  eatMac() { tone(300, .2, "square", .1, 0, 1400); },
+  bone() { if (!AC) return; const t = AC.currentTime; [72, 76, 79, 84].forEach((n, i) => tone(midi(n), .1, "square", .09, t + i * .06)); },
+  life() { if (!AC) return; const t = AC.currentTime; [84, 88, 91, 96].forEach((n, i) => tone(midi(n), .12, "square", .08, t + i * .08)); },
+  die() { if (!AC) return; const t = AC.currentTime; for (let i = 0; i < 10; i++) tone(700 - i * 55, .12, "square", .09, t + i * .1, 600 - i * 55); },
+  start() { if (!AC) return; const t = AC.currentTime; [[72, 0], [79, .15], [76, .3], [84, .45], [79, .6], [84, .9]].forEach(([n, d]) => { tone(midi(n), .14, "square", .08, t + d); tone(midi(n - 24), .14, "triangle", .2, t + d); }); },
+};
+function setMuted(m) { muted = m; if (master) master.gain.value = m ? 0 : .22; muteBtn.textContent = m ? "MUTED" : "SOUND"; muteBtn.setAttribute("aria-label", m ? "Unmute sound" : "Mute sound"); }
+
+/* ---------------- State ---------------- */
+const canvas = document.getElementById("game"), ctx = canvas.getContext("2d");
+ctx.imageSmoothingEnabled = false;
+const $ = id => document.getElementById(id);
+const titleScreen = $("titleScreen"), pauseScreen = $("pauseScreen"), overScreen = $("overScreen"), muteBtn = $("muteBtn");
+const DIR = { up: { x: 0, y: -1 }, down: { x: 0, y: 1 }, left: { x: -1, y: 0 }, right: { x: 1, y: 0 } };
+const ORDER = [DIR.up, DIR.left, DIR.down, DIR.right];
+const MODE_TIMES = [7, 20, 7, 20, 5, 20, 5, Infinity];
+const RELEASE = [0, 1.5, 5, 9];
+const BONE_POINTS = [100, 300, 500, 700, 1000, 2000, 3000, 5000];
+const DT = 1 / 120;
+let G = { mode: "title", score: 0, high: 0, lives: 3, level: 1, t: 0, time: 0 };
+try { G.high = Number(localStorage.getItem("cheddar-chomp-high")) || 0; } catch (e) {}
+let dots, dotsLeft, eaten, player, macs, queued = null, popups = [], bones = [];
+
+const center = n => (n + .5) * T;
+function resetDots() {
+  dots = MAZE.map(r => [...r].map(ch => (ch === "." || ch === "o") ? ch : ""));
+  dotsLeft = dots.flat().filter(Boolean).length; eaten = 0;
+}
+function resetActors() {
+  player = { x: center(START.c), y: center(START.r), dx: -1, dy: 0, face: -1, moving: true, anim: 0 };
+  queued = null;
+  macs = MACS.map((m, i) => {
+    const out = i === 0;
+    return {
+      i, x: out ? center(OUTSIDE.c) : center(9 + (i - 1)), y: out ? center(OUTSIDE.r) : center(PEN_Y),
+      dx: out ? -1 : 0, dy: out ? 0 : (i % 2 ? -1 : 1), state: out ? "active" : "pen", fright: false, anim: 0,
+    };
+  });
+  G.modeIdx = 0; G.modeT = 0; G.frightT = 0; G.combo = 0; G.releaseT = 0; G.sirenT = 0;
+  G.bone = null; popups = [];
+}
+const scatterMode = () => G.modeIdx % 2 === 0;
+function levelSpeed(base, step, cap) { return Math.min(cap, base + step * (G.level - 1)) * T; }
+
+/* ---------------- Movement ---------------- */
+// Move along the current direction; at each tile centre, onCenter may turn, and walls stop us there.
+function stepActor(e, px, onCenter, isBlocked) {
+  const c = Math.floor(e.x / T), r = Math.floor(e.y / T), cx = center(c), cy = center(r);
+  const along = e.dx !== 0 ? (e.x - cx) * e.dx : e.dy !== 0 ? (e.y - cy) * e.dy : 0;
+  const next = along + px;
+  if (along <= 1e-6 && next >= -1e-6) {
+    e.x = cx; e.y = cy;
+    onCenter(e, c, r);
+    if ((e.dx === 0 && e.dy === 0) || isBlocked(c + e.dx, r + e.dy)) { e.moving = false; return; }
+    e.moving = true;
+    const rem = Math.max(0, next);
+    e.x += e.dx * rem; e.y += e.dy * rem;
+  } else { e.x += e.dx * px; e.y += e.dy * px; e.moving = true; }
+  if (e.x < -T / 2) e.x += COLS * T; else if (e.x > COLS * T + T / 2) e.x -= COLS * T;
+}
+function playerCenter(e, c, r) {
+  if (queued && !blocked(c + queued.x, r + queued.y)) { e.dx = queued.x; e.dy = queued.y; }
+  if (e.dx) e.face = e.dx;
+}
+function targetFor(m) {
+  const pc = Math.floor(player.x / T), pr = Math.floor(player.y / T);
+  if (m.state === "eaten") return OUTSIDE;
+  if (scatterMode()) return [{ c: 20, r: -2 }, { c: 0, r: -2 }, { c: 20, r: 22 }, { c: 0, r: 22 }][m.i];
+  if (m.i === 0) return { c: pc, r: pr };
+  if (m.i === 1) return { c: pc + player.dx * 4, r: pr + player.dy * 4 };
+  if (m.i === 2) {
+    const a = macs[0], ac = Math.floor(a.x / T), ar = Math.floor(a.y / T);
+    const ahead = { c: pc + player.dx * 2, r: pr + player.dy * 2 };
+    return { c: ahead.c * 2 - ac, r: ahead.r * 2 - ar };
+  }
+  const mc = Math.floor(m.x / T), mr = Math.floor(m.y / T);
+  return Math.hypot(mc - pc, mr - pr) > 8 ? { c: pc, r: pr } : { c: 0, r: 22 };
+}
+function macCenter(m, c, r) {
+  if (m.state === "eaten" && c === OUTSIDE.c && r === OUTSIDE.r) { m.state = "entering"; m.dx = 0; m.dy = 1; return; }
+  const opts = ORDER.filter(d => !(d.x === -m.dx && d.y === -m.dy) && !blocked(c + d.x, r + d.y));
+  if (!opts.length) { m.dx = -m.dx; m.dy = -m.dy; return; }
+  let pick;
+  if (m.fright) pick = opts[Math.floor(Math.random() * opts.length)];
+  else {
+    const t = targetFor(m); let best = Infinity;
+    for (const d of opts) { const dd = (c + d.x - t.c) ** 2 + (r + d.y - t.r) ** 2; if (dd < best) { best = dd; pick = d; } }
+  }
+  m.dx = pick.x; m.dy = pick.y;
+}
+function moveToward(e, tx, ty, px) {
+  const dx = tx - e.x, dy = ty - e.y;
+  if (Math.abs(dx) > .01) { const s = Math.min(px, Math.abs(dx)); e.x += Math.sign(dx) * s; e.dx = Math.sign(dx); e.dy = 0; return Math.abs(dx) <= px && Math.abs(dy) < .01; }
+  if (Math.abs(dy) > .01) { const s = Math.min(px, Math.abs(dy)); e.y += Math.sign(dy) * s; e.dy = Math.sign(dy); e.dx = 0; return Math.abs(dy) <= px; }
+  return true;
+}
+function macSpeed(m) {
+  if (m.state === "eaten" || m.state === "entering") return 15 * T;
+  if (m.state === "pen" || m.state === "leaving") return 3.5 * T;
+  const c = Math.floor(m.x / T), r = Math.floor(m.y / T);
+  if (inTunnel(c, r)) return 4 * T;
+  if (m.fright) return 4.6 * T;
+  return levelSpeed(7.1, .3, 9);
+}
+function updateMac(m, dt) {
+  const px = macSpeed(m) * dt;
+  m.anim += dt;
+  if (m.state === "pen") {
+    const base = center(PEN_Y);
+    m.y += m.dy * px * .6;
+    if (m.y < base - 3) m.dy = 1; if (m.y > base + 3) m.dy = -1;
+    if (G.releaseT >= RELEASE[m.i] / Math.max(1, G.level * .7)) m.state = "leaving";
+    return;
+  }
+  if (m.state === "leaving") {
+    if (moveToward(m, center(DOOR.c), Math.abs(m.x - center(DOOR.c)) > .01 ? m.y : center(OUTSIDE.r), px)) {
+      m.x = center(OUTSIDE.c); m.y = center(OUTSIDE.r); m.state = "active"; m.dx = -1; m.dy = 0;
+    }
+    return;
+  }
+  if (m.state === "entering") {
+    if (moveToward(m, center(OUTSIDE.c), center(PEN_Y), px)) { m.state = "leaving"; m.fright = false; }
+    return;
+  }
+  stepActor(m, px, macCenter, blocked);
+}
+
+/* ---------------- Game flow ---------------- */
+function showOnly(el) { for (const o of [titleScreen, pauseScreen, overScreen]) o.hidden = o !== el; }
+function newGame() {
+  audio();
+  G.score = 0; G.lives = 3; G.level = 1; G.extra = false; bones = [];
+  resetDots(); resetActors();
+  showOnly(null); canvas.focus({ preventScroll: true });
+  ready(2.2, true);
+  SFX.start();
+}
+function ready(sec, label) { G.mode = "ready"; G.t = 0; G.readyFor = sec; G.readyLabel = label; }
+function addScore(n) {
+  G.score += n;
+  if (!G.extra && G.score >= 10000) { G.extra = true; G.lives++; SFX.life(); }
+  if (G.score > G.high) { G.high = G.score; try { localStorage.setItem("cheddar-chomp-high", String(G.high)); } catch (e) {} }
+}
+function eatAt(c, r) {
+  c = ((c % COLS) + COLS) % COLS;
+  if (r < 0 || r >= ROWS) return;
+  const d = dots[r][c];
+  if (!d) return;
+  dots[r][c] = ""; dotsLeft--; eaten++;
+  if (d === ".") { addScore(10); SFX.waka(); }
+  else {
+    addScore(50); SFX.ball();
+    G.frightT = Math.max(1.5, 7 - (G.level - 1) * .8); G.combo = 0;
+    for (const m of macs) if (m.state !== "eaten" && m.state !== "entering") {
+      m.fright = true;
+      if (m.state === "active") { m.dx = -m.dx; m.dy = -m.dy; }
+    }
+  }
+  if (eaten === 50 || eaten === 120) G.bone = { t: 9.5, pts: BONE_POINTS[Math.min(G.level - 1, BONE_POINTS.length - 1)] };
+  if (dotsLeft === 0) { G.mode = "clear"; G.t = 0; }
+}
+function update(dt) {
+  G.time += dt;
+  for (const p of popups) p.t += dt;
+  popups = popups.filter(p => p.t < 1.1);
+  if (G.mode === "ready") {
+    G.t += dt;
+    if (G.t >= G.readyFor) G.mode = "play";
+    return;
+  }
+  if (G.mode === "freeze") { G.t += dt; if (G.t >= .55) G.mode = "play"; return; }
+  if (G.mode === "dying") {
+    G.t += dt;
+    if (G.t > 2.1) {
+      G.lives--;
+      if (G.lives <= 0) return gameOver();
+      resetActors(); ready(1.2, false);
+    }
+    return;
+  }
+  if (G.mode === "clear") {
+    G.t += dt;
+    if (G.t > 2.2) { G.level++; resetDots(); resetActors(); ready(1.8, true); }
+    return;
+  }
+  if (G.mode !== "play") return;
+
+  if (G.frightT > 0) {
+    G.frightT -= dt;
+    G.sirenT -= dt; if (G.sirenT <= 0) { SFX.siren(); G.sirenT = .2; }
+    if (G.frightT <= 0) { G.frightT = 0; for (const m of macs) m.fright = false; }
+  } else {
+    G.modeT += dt;
+    if (G.modeT >= MODE_TIMES[G.modeIdx]) {
+      G.modeT = 0; G.modeIdx++;
+      for (const m of macs) if (m.state === "active") { m.dx = -m.dx; m.dy = -m.dy; }
+    }
+  }
+  G.releaseT += dt;
+  if (G.bone) { G.bone.t -= dt; if (G.bone.t <= 0) G.bone = null; }
+
+  const c0 = Math.floor(player.x / T), r0 = Math.floor(player.y / T);
+  const pspeed = (G.frightT > 0 ? levelSpeed(8.2, .2, 9.4) : levelSpeed(7.6, .25, 9.2)) * (inTunnel(c0, r0) ? .85 : 1);
+  stepActor(player, pspeed * dt, playerCenter, blocked);
+  if (player.moving) player.anim += dt;
+  const pc = Math.floor(player.x / T), pr = Math.floor(player.y / T);
+  if (Math.abs(player.x - center(pc)) < T * .35 && Math.abs(player.y - center(pr)) < T * .35) eatAt(pc, pr);
+  if (G.bone && pc === START.c && pr === START.r) {
+    addScore(G.bone.pts); SFX.bone(); popups.push({ x: center(START.c), y: center(START.r), text: String(G.bone.pts), t: 0 });
+    bones.push(G.level); G.bone = null;
+  }
+  if (G.mode !== "play") return;
+  for (const m of macs) {
+    updateMac(m, dt);
+    if (m.state !== "active") continue;
+    if (Math.hypot(m.x - player.x, m.y - player.y) < T * .62) {
+      if (m.fright) {
+        m.fright = false; m.state = "eaten";
+        const pts = 200 * Math.pow(2, G.combo++); addScore(pts); SFX.eatMac();
+        popups.push({ x: m.x, y: m.y, text: String(pts), t: 0 });
+        G.mode = "freeze"; G.t = 0; return;
+      }
+      G.mode = "dying"; G.t = 0; SFX.die(); return;
+    }
+  }
+}
+function gameOver() {
+  G.mode = "over";
+  $("overTitle").textContent = "The Macs got him!";
+  $("overText").textContent = `Cheddar made it to level ${G.level} before running out of cheese.`;
+  $("overStats").textContent = `Score ${G.score} · High ${G.high}`;
+  updateHigh(); showOnly(overScreen); $("againBtn").focus();
+}
+function updateHigh() { $("highLine").textContent = "High score: " + G.high; }
+function pause() { if (!["play", "ready", "freeze", "dying", "clear"].includes(G.mode)) return; G.prev = G.mode; G.mode = "paused"; showOnly(pauseScreen); $("resumeBtn").focus(); }
+function resume() { if (G.mode !== "paused") return; G.mode = G.prev; showOnly(null); canvas.focus({ preventScroll: true }); }
+function toTitle() { G.mode = "title"; resetDots(); resetActors(); showOnly(titleScreen); updateHigh(); $("playBtn").focus(); }
+
+/* ---------------- Input ---------------- */
+function steer(name) {
+  const d = DIR[name]; if (!d) return;
+  audio();
+  if (G.mode === "title") { newGame(); }
+  queued = d;
+  if (player && d.x === -player.dx && d.y === -player.dy && (player.dx || player.dy)) { player.dx = d.x; player.dy = d.y; if (d.x) player.face = d.x; }
+  for (const b of document.querySelectorAll(".pad-btn")) b.classList.toggle("on", b.dataset.dir === name);
+}
+const KEYS = { ArrowUp: "up", KeyW: "up", ArrowDown: "down", KeyS: "down", ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right" };
+window.addEventListener("keydown", e => {
+  if (KEYS[e.code]) {
+    if (G.mode === "paused" || G.mode === "over") return;
+    e.preventDefault(); steer(KEYS[e.code]);
+  } else if ((e.code === "Space" || e.code === "Enter") && G.mode === "title" && !(document.activeElement && document.activeElement.tagName === "BUTTON")) {
+    e.preventDefault(); newGame();
+  } else if (e.code === "KeyP" || e.code === "Escape") { G.mode === "paused" ? resume() : pause(); }
+  else if (e.code === "KeyM") setMuted(!muted);
+});
+for (const b of document.querySelectorAll(".pad-btn")) {
+  b.addEventListener("pointerdown", e => { e.preventDefault(); steer(b.dataset.dir); });
+  b.addEventListener("contextmenu", e => e.preventDefault());
+}
+// Swipe anywhere outside the buttons and menus
+let swipe = null;
+window.addEventListener("pointerdown", e => {
+  if (e.target.closest && e.target.closest("button, .panel")) return;
+  audio(); swipe = { id: e.pointerId, x: e.clientX, y: e.clientY };
+}, { passive: true });
+window.addEventListener("pointermove", e => {
+  if (!swipe || e.pointerId !== swipe.id) return;
+  const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
+  if (Math.hypot(dx, dy) < 18) return;
+  steer(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"));
+  swipe.x = e.clientX; swipe.y = e.clientY;
+});
+const endSwipe = () => { swipe = null; };
+window.addEventListener("pointerup", endSwipe); window.addEventListener("pointercancel", endSwipe);
+$("stage").addEventListener("contextmenu", e => e.preventDefault());
+window.addEventListener("blur", pause);
+document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
+$("playBtn").onclick = newGame;
+$("againBtn").onclick = newGame;
+$("resumeBtn").onclick = resume;
+$("quitBtn").onclick = toTitle;
+$("overTitleBtn").onclick = toTitle;
+muteBtn.onclick = () => { audio(); setMuted(!muted); };
+$("pauseBtn").onclick = () => (G.mode === "paused" ? resume() : pause());
+canvas.tabIndex = 0;
+
+/* ---------------- Render ---------------- */
+function text(str, x, y, size, fill, align = "left") {
+  ctx.font = `${size}px 'Jersey 10', monospace`; ctx.textAlign = align; ctx.textBaseline = "top";
+  ctx.fillStyle = "#1e1420"; for (const [a, b] of [[1, 1], [-1, 0], [1, 0], [0, -1], [0, 1]]) ctx.fillText(str, x + a, y + b);
+  ctx.fillStyle = fill; ctx.fillText(str, x, y);
+}
+function drawCorgi() {
+  const p = player;
+  let frame = p.moving ? Math.floor(p.anim / .09) % 2 : 0;
+  const img = IMG.corgi[frame];
+  ctx.save();
+  ctx.translate(Math.round(p.x), Math.round(p.y + HUD_T));
+  if (G.mode === "dying" && G.t > .6) {
+    const k = Math.min(1, (G.t - .6) / 1.2);
+    ctx.rotate(k * Math.PI * 4);
+    ctx.globalAlpha = 1 - Math.max(0, k - .7) / .3;
+  }
+  if (p.face < 0) ctx.scale(-1, 1);
+  ctx.drawImage(img, -7, -6);
+  ctx.restore();
+  if (G.mode === "dying" && G.t > .6) {
+    for (let i = 0; i < 3; i++) {
+      const a = G.time * 5 + i * 2.1;
+      ctx.drawImage(IMG.star, Math.round(p.x + Math.cos(a) * 9) - 2, Math.round(p.y + HUD_T - 9 + Math.sin(a) * 3) - 2);
+    }
+  }
+}
+function drawMac(m) {
+  let set = MACS[m.i].img;
+  if (m.fright) set = (G.frightT < 2 && Math.floor(G.time * 6) % 2) ? IMG.flash : IMG.scared;
+  const img = set[(m.state === "pen" || Math.floor(m.anim / .14) % 2 === 0) ? 0 : 1];
+  ctx.save();
+  if (m.state === "eaten" || m.state === "entering") ctx.globalAlpha = .35;
+  ctx.translate(Math.round(m.x), Math.round(m.y + HUD_T));
+  if (m.dx > 0) ctx.scale(-1, 1);
+  ctx.drawImage(img, -6, 7 - img.height);
+  ctx.restore();
+}
+function render() {
+  ctx.fillStyle = "#121a38"; ctx.fillRect(0, 0, W, H);
+  const flash = G.mode === "clear" && Math.floor(G.t * 5) % 2 === 1;
+  ctx.drawImage(flash ? MAZE_FLASH : MAZE_IMG, 0, HUD_T);
+  // kibble and tennis balls
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const d = dots && dots[r][c]; if (!d) continue;
+    const X = c * T, Y = r * T + HUD_T;
+    if (d === ".") {
+      ctx.fillStyle = "#a8703c"; ctx.fillRect(X + 6, Y + 6, 3, 3);
+      ctx.fillStyle = "#e0aa6c"; ctx.fillRect(X + 6, Y + 6, 2, 2);
+    } else if (Math.floor(G.time * 4) % 2 === 0 || G.mode !== "play") ctx.drawImage(IMG.ball, X + 2, Y + 2);
+  }
+  if (G.bone) {
+    const bob = Math.round(Math.sin(G.time * 5) * 1);
+    ctx.drawImage(IMG.bone, center(START.c) - 6, center(START.r) + HUD_T - 3 + bob);
+  }
+  const hideMacs = G.mode === "dying" && G.t > .6 || G.mode === "clear";
+  const actors = [];
+  if (!hideMacs && macs) for (const m of macs) actors.push({ y: m.y, draw: () => drawMac(m) });
+  const freezeHide = G.mode === "freeze";
+  if (player && !freezeHide) actors.push({ y: player.y + .1, draw: drawCorgi });
+  actors.sort((a, b) => a.y - b.y).forEach(a => a.draw());
+  for (const p of popups) text(p.text, Math.round(p.x), Math.round(p.y + HUD_T - 8 - p.t * 6), 16, "#9ee06a", "center");
+  if (G.mode === "ready" && G.readyLabel) text("LEVEL " + G.level, W / 2, 11 * T + HUD_T + 1, 18, "#ffc93c", "center");
+  // HUD
+  text("SCORE " + G.score, 6, 4, 18, "#fff4e2");
+  text("HIGH " + Math.max(G.high, G.score), Math.round(W * .52), 4, 18, "#ffc93c", "center");
+  const by = H - HUD_B + 5;
+  for (let i = 0; i < Math.min(G.lives, 7); i++) ctx.drawImage(IMG.cheese, 6 + i * 13, by + 2);
+  const shown = bones.slice(-6);
+  shown.forEach((_, i) => ctx.drawImage(IMG.bone, W - 18 - i * 15, by + 4));
+  if (G.mode !== "title") text("LV " + G.level, W - 20 - shown.length * 15, by - 2, 16, "#b3c1e0", "right");
+}
+let acc = 0, last = 0;
+function loop(ts) {
+  const dt = Math.min(.05, (ts - (last || ts)) / 1000); last = ts;
+  if (G.mode === "title") { G.time += dt; if (player) player.anim += dt; }
+  else { acc += dt; while (acc >= DT) { acc -= DT; update(DT); } }
+  render();
+  requestAnimationFrame(loop);
+}
+
+/* ---------------- Boot ---------------- */
+(function legend() {
+  const rows = [
+    [IMG.corgi[0], "Cheddar, that's you"],
+    [MACS[0].img[0], "Macs chase you"],
+    [IMG.ball, "Tennis ball: Macs run scared"],
+    [IMG.bone, "Bones: bonus points"],
+    [IMG.cheese, "Cheese: lives left"],
+  ];
+  const el = $("legend");
+  for (const [img, label] of rows) {
+    const c = mk(img.width, img.height); c.getContext("2d").drawImage(img, 0, 0);
+    c.style.imageRendering = "pixelated"; c.setAttribute("aria-hidden", "true");
+    const s = document.createElement("span"); s.textContent = label;
+    el.append(c, s);
+  }
+})();
+resetDots(); resetActors(); updateHigh();
+if (document.fonts && document.fonts.load) document.fonts.load("16px 'Jersey 10'").catch(() => {});
+requestAnimationFrame(loop);
+</script>
