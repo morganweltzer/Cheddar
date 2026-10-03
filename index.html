@@ -1110,17 +1110,9 @@ function drawHUD() {
     if (G.practice) outlinedText("PRACTICE", L, top + 14, 12, "#9ee06a");
   }
 }
-// Drawn inside the scene band: the attempt banner, the practice "Ready" cue, and a tap hint on tall screens
+// Drawn inside the scene band: the attempt banner, and a tap hint in the dirt on tall screens
 function drawSceneText() {
   if (G.mode === "title") return;
-  if (G.mode === "ready") {
-    const X = Math.round((G.run.x - G.camX) * T + 8), Y = Math.round(GY - G.run.y * T) - 44;
-    outlinedText(G.readyT < READY_TIME * .5 ? "READY" : "GO!", X, Y, 16, "#9ee06a", "center");
-    // a shrinking ring that marks Cheddar's spot
-    const r = Math.round(26 - 18 * (G.readyT / READY_TIME));
-    ctx.fillStyle = "rgba(158,224,106,.8)";
-    for (let a = 0; a < 28; a++) { const t = a / 28 * Math.PI * 2; ctx.fillRect(Math.round(X + Math.cos(t) * r), Math.round(Y + 36 + Math.sin(t) * r * .8), 2, 2); }
-  }
   const ax = sx(2);
   if (ax > -220 && (!G.practice || G.attempts === 1)) outlinedText("Attempt " + G.attempts, ax, 52, 24, "#fff4e2");
   const deep = CH - OY;
