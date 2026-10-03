@@ -1034,11 +1034,6 @@ function drawLevel() {
     ctx.drawImage(IMG.ballFrames[Math.floor(G.time * 6) % 4], X - 8, Y - 8);
     ctx.globalAlpha = 1;
   });
-  for (const c of G.checkpoints) {
-    if (!visible(c.x)) continue;
-    ctx.drawImage(IMG.bone, sx(c.x) + 4, sy(c.y) - 26);
-    ctx.fillStyle = "#fff4e2"; ctx.fillRect(sx(c.x) + 7, sy(c.y) - 21, 2, 21);
-  }
   drawCheese();
 }
 function drawCheese() {
