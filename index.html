@@ -65,16 +65,7 @@ canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rend
 .btn.ghost{background:transparent;box-shadow:none;border-style:dashed}
 .help{margin:0;font-size:clamp(12px,1.6vw,16px);color:var(--muted);letter-spacing:.05em;text-align:center;line-height:1.5;max-width:70ch}
 .help kbd{font:inherit;color:var(--cream);border:2px solid var(--plum);padding:0 .35em;background:var(--plum)}
-.touch-only,.tap-pad,.rotate-hint{display:none}
-.tap-pad{
-  width:100%;flex:1 1 auto;min-height:120px;box-sizing:border-box;
-  border:3px dashed var(--plum);background:rgba(42,58,106,.25);color:var(--muted);
-  flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;
-  font-size:15px;letter-spacing:.08em;text-transform:uppercase;touch-action:none;
-}
-.tap-pad strong{font-size:28px;color:var(--cream);letter-spacing:.06em}
-.tap-pad.down{background:rgba(255,201,60,.18);border-color:var(--cheddar)}
-.rotate-hint{margin:0;font-size:13px;color:var(--muted);letter-spacing:.05em;text-align:center}
+.touch-only{display:none}
 @media (max-width:560px){ .panel p.long{display:none} .panel{gap:1.6cqh} .panel .stats{margin-top:.4em} }
 @media (pointer:coarse){
   .key-only{display:none}
@@ -82,17 +73,35 @@ canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rend
   .icon-btn{font-size:clamp(11px,2.6cqw,16px);padding:.55em .7em}
   .btn{font-size:clamp(14px,3.2cqw,26px)}
 }
-@media (pointer:coarse) and (orientation:portrait){
-  body{justify-content:flex-start;padding-block:max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-bottom, 0px))}
-  .tap-pad{display:flex}
-  .rotate-hint{display:block}
-  .help{display:none}
-}
 /* Sideways phones and other short screens: give the stage all the height */
 @media (max-height:520px){
   body{padding-block:4px;gap:0}
-  .help,.rotate-hint{display:none}
+  .help{display:none}
   .stage{width:min(100%, calc((100vh - 16px) * 16 / 9));width:min(100%, calc((100dvh - 16px) * 16 / 9));border-width:2px;box-shadow:none}
+}
+/* Phones and tablets: the game owns the whole screen and the canvas reshapes to fit it */
+body.full{display:block;padding:0}
+body.full .stage{position:fixed;inset:0;width:auto;height:auto;aspect-ratio:auto;max-width:none;border:0;box-shadow:none}
+body.full .help{display:none}
+body.full .corner{bottom:calc(2.4cqh + env(safe-area-inset-bottom, 0px));right:calc(2.4cqw + env(safe-area-inset-right, 0px))}
+@container (orientation: portrait){
+  .panel{max-width:86cqw;padding:6cqw;gap:3.6cqw;box-shadow:6px 6px 0 var(--ink)}
+  .panel h1{font-size:13cqw}
+  .panel h2{font-size:10cqw}
+  .panel p,.panel p.long{display:block;font-size:4.3cqw;line-height:1.35}
+  .panel .stats{font-size:3.6cqw}
+  .row{gap:3cqw}
+  .btn{font-size:5.4cqw}
+  .icon-btn{font-size:3.8cqw;padding:.7em .9em}
+}
+@container (orientation: landscape) and (max-height: 500px){
+  .panel{max-width:72cqw;padding:4cqh 4cqw;gap:3cqh}
+  .panel h1{font-size:15cqh}
+  .panel h2{font-size:11cqh}
+  .panel p,.panel p.long{display:block;font-size:4.6cqh}
+  .panel .stats{font-size:4.2cqh}
+  .btn{font-size:6.2cqh}
+  .icon-btn{font-size:4.4cqh}
 }
 </style>
 
@@ -139,9 +148,8 @@ canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rend
     </div>
   </div>
 </div>
-<div class="tap-pad" id="tapPad" aria-hidden="true"><strong>Tap to jump</strong>Hold to keep hopping &middot; tap again on tennis balls</div>
-<p class="rotate-hint">Turn your phone sideways for a bigger view.</p>
-<p class="help"><span class="key-only"><kbd>Space</kbd> <kbd>&uarr;</kbd> or click to jump. Hold to keep hopping. Press again in mid-air to use a tennis ball. <kbd>P</kbd> pause &middot; <kbd>R</kbd> restart &middot; <kbd>M</kbd> mute</span><span class="touch-only">Tap anywhere on the game to jump. Hold to keep hopping. Tap again in mid-air to use a tennis ball.</span></p>
+<div id="safeProbe" aria-hidden="true" style="position:fixed;top:0;left:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px)"></div>
+<p class="help"><span class="key-only"><kbd>Space</kbd> <kbd>&uarr;</kbd> or click to jump. Hold to keep hopping. Press again in mid-air to use a tennis ball. <kbd>P</kbd> pause &middot; <kbd>R</kbd> restart &middot; <kbd>M</kbd> mute</span><span class="touch-only">Tap anywhere to jump. Hold to keep hopping. Tap again in mid-air to use a tennis ball.</span></p>
 
 <script>
 "use strict";
@@ -442,21 +450,25 @@ IMG.ballFrames = [0, 1, 2, 3].map(f => {
 });
 
 /* ---------------- Background layers ---------------- */
-const W = 384, H = 216, T = 16, GY = 176;
+// The scene is drawn in a 216px-tall band. On phones the canvas reshapes: wider when sideways,
+// taller when upright (extra sky above the band, deeper dirt below it).
+let W = 384, CH = 216, OY = 0, safeTop = 0, safeLeft = 0, safeRight = 0;
+const H = 216, T = 16, GY = 176, SKY_W = 1024;
 const SKY = ["#0f1a40", "#152457", "#1c306c", "#243e84", "#2e4f9a", "#3d63ad", "#5379bd", "#7a93c8", "#c7a9b6"];
-const VIEW_TILES = W / T, PLAYER_COL = 6;
+let VIEW_TILES = W / T, PLAYER_COL = 6;
 const BG = {};
 BG.sky = (() => {
-  const c = mk(W, H), x = c.getContext("2d"), band = 21;
-  SKY.forEach((col, i) => { x.fillStyle = col; x.fillRect(0, i * band, W, band + 2); });
+  const c = mk(SKY_W, H), x = c.getContext("2d"), band = 21;
+  SKY.forEach((col, i) => { x.fillStyle = col; x.fillRect(0, i * band, SKY_W, band + 2); });
   for (let i = 1; i < SKY.length; i++) {
     x.fillStyle = SKY[i - 1];
-    for (let px = 0; px < W; px += 2) { x.fillRect(px + (i % 2), i * band, 1, 1); x.fillRect(px + 1 - (i % 2), i * band + 2, 1, 1); }
-    for (let px = 0; px < W; px += 4) x.fillRect(px, i * band + 1, 1, 1);
+    for (let px = 0; px < SKY_W; px += 2) { x.fillRect(px + (i % 2), i * band, 1, 1); x.fillRect(px + 1 - (i % 2), i * band + 2, 1, 1); }
+    for (let px = 0; px < SKY_W; px += 4) x.fillRect(px, i * band + 1, 1, 1);
   }
   return c;
 })();
-BG.stars = Array.from({ length: 34 }, (_, i) => ({ x: (i * 137.5) % W, y: (i * 53.3) % 56, p: i * 0.7 }));
+BG.stars = Array.from({ length: 80 }, (_, i) => ({ x: (i * 137.5) % SKY_W, y: (i * 53.3) % 56, p: i * 0.7 }));
+BG.topStars = Array.from({ length: 140 }, (_, i) => ({ x: (i * 211.7) % SKY_W, y: 4 + (i * 97.31) % 520, p: i * 1.3, big: i % 9 === 0 }));
 function ridge(w, base, amp, f1, f2, col, edge) {
   const c = mk(w, H), x = c.getContext("2d");
   for (let i = 0; i < w; i += 2) {
@@ -471,7 +483,7 @@ BG.far = ridge(960, 84, 14, 3, 7, "#2c4580", "#3a5694"); // Kentucky hills acros
 const RIVER_Y = 141;
 // Downtown Cincinnati, seen from across the Ohio River. Wide enough that it never repeats.
 BG.skyline = (() => {
-  const w = 800, c = mk(w, H), x = c.getContext("2d"), B = RIVER_Y;
+  const w = 900, c = mk(w, H), x = c.getContext("2d"), B = RIVER_Y;
   let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const lit = (bx, top, bw, dens) => {
     for (let j = top + 3; j < B - 2; j += 3) for (let i = bx + 2; i < bx + bw - 1; i += 2)
@@ -718,11 +730,9 @@ function toTitle() { G.mode = "title"; stopMusic(); G.run = newRun(); showOnly(t
 // Keys and fingers both count; any new press is fresh for tennis balls, and the jump is held while any of them is down.
 let keyHeld = false;
 const pointers = new Set();
-const tapPad = $("tapPad");
 function syncHeld() {
   G.held = keyHeld || pointers.size > 0;
   if (!G.held) G.run.buffer = false;
-  tapPad.classList.toggle("down", pointers.size > 0);
 }
 function press() {
   if (G.mode === "title") return;
@@ -764,7 +774,6 @@ const lift = e => { if (pointers.delete(e.pointerId)) syncHeld(); };
 window.addEventListener("pointerup", lift);
 window.addEventListener("pointercancel", lift);
 document.getElementById("stage").addEventListener("contextmenu", e => e.preventDefault());
-tapPad.addEventListener("contextmenu", e => e.preventDefault());
 window.addEventListener("blur", () => { release(); pause(); });
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) { release(); pause(); }
@@ -886,15 +895,15 @@ function drawBackground() {
     ctx.fillStyle = tw ? "#fff4e2" : "#9fb3dc"; ctx.fillRect(s.x | 0, s.y | 0, 1, 1);
   }
   // sun, barely drifting
-  const sunX = 290 - G.camX * 0.06, sunY = 120;
-  for (let j = -30; j <= 30; j += 2) for (let i = -30; i <= 30; i += 2) {
+  const sunX = Math.round(W * .75) - G.camX * 0.06, sunY = 120;
+  if (OY === 0) for (let j = -30; j <= 30; j += 2) for (let i = -30; i <= 30; i += 2) {
     const d = i * i + j * j; if (d > 900) continue;
     ctx.fillStyle = d < 380 ? "#fff3cf" : d < 700 ? "#ffe0a8" : "#f7c99a";
     ctx.fillRect(Math.round(sunX + i), sunY + j, 2, 2);
   }
   const par = (img, f, y = 0) => {
     const w = img.width, off = Math.round(((G.camX * T * f) % w + w) % w);
-    ctx.drawImage(img, -off, y); ctx.drawImage(img, w - off, y); if (2 * w - off < W) ctx.drawImage(img, 2 * w - off, y);
+    for (let x = -off; x < W; x += w) ctx.drawImage(img, x, y);
   };
   const still = (img, f, pad) => ctx.drawImage(img, -Math.round(G.camX * T * f + pad), 0);
   par(BG.far, .05, -40);
@@ -930,13 +939,13 @@ function drawBoat() {
   if (Math.floor(G.time * 2) % 2) { ctx.fillStyle = "rgba(233,224,238,.6)"; ctx.fillRect(bx + 17, by - 10, 2, 2); ctx.fillRect(bx + 15, by - 13, 2, 2); }
 }
 function drawGround() {
-  const x0 = Math.floor(G.camX) - 1, x1 = x0 + VIEW_TILES + 3;
+  const x0 = Math.floor(G.camX) - 1, x1 = x0 + VIEW_TILES + 3, deep = CH - OY;
   for (let i = x0; i <= x1; i++) {
     const inPit = LEVEL.pits.some(p => i >= p.x && i < p.x + p.w);
     const X = sx(i);
     if (inPit) {
-      ctx.fillStyle = "#121a38"; ctx.fillRect(X, GY, T, H - GY);
-      ctx.fillStyle = "#4f7fc4"; ctx.fillRect(X, GY + 18, T, H - GY - 18);
+      ctx.fillStyle = "#121a38"; ctx.fillRect(X, GY, T, deep - GY);
+      ctx.fillStyle = "#4f7fc4"; ctx.fillRect(X, GY + 18, T, deep - GY - 18);
       ctx.fillStyle = "#7fb0ea"; ctx.fillRect(X, GY + 18, T, 2);
       const ph = Math.floor(G.time * 4 + i) % 4;
       ctx.fillStyle = "#cfe6ff"; ctx.fillRect(X + ph * 4, GY + 24 + (i % 3) * 6, 4, 1);
@@ -944,10 +953,18 @@ function drawGround() {
     }
     const v = ((i * 7919) >>> 0) % 4;
     ctx.drawImage(IMG.ground[v], X, GY);
+    if (deep > GY + 64) {
+      ctx.fillStyle = "#7a4a2c"; ctx.fillRect(X, GY + 64, T, deep - GY - 64);
+      ctx.fillStyle = "#6a3f25"; for (let j = GY + 65; j < deep; j += 9) ctx.fillRect(X, j, T, 1);
+      for (let j = GY + 70, n = 0; j < deep; j += 13, n++) {
+        const h2 = ((i * 31 + n * 17) >>> 0) % 7;
+        if (h2 < 2) { ctx.fillStyle = h2 ? "#5e3820" : "#946038"; ctx.fillRect(X + ((i * 5 + n * 3) % 13), j, 2, 1); }
+      }
+    }
     const lp = LEVEL.pits.some(p => i + 1 === p.x), rp = LEVEL.pits.some(p => i === p.x + p.w);
     ctx.fillStyle = "#3a2420";
-    if (lp) ctx.fillRect(X + 15, GY, 1, H - GY);
-    if (rp) ctx.fillRect(X, GY, 1, H - GY);
+    if (lp) ctx.fillRect(X + 15, GY, 1, deep - GY);
+    if (rp) ctx.fillRect(X, GY, 1, deep - GY);
     // little flowers
     const hsh = ((i * 2654435761) >>> 0) % 11;
     if (hsh === 3) { ctx.fillStyle = "#fff4e2"; ctx.fillRect(X + 5, GY - 3, 3, 3); ctx.fillStyle = "#ffd04a"; ctx.fillRect(X + 6, GY - 2, 1, 1); ctx.fillStyle = "#3d7a3a"; ctx.fillRect(X + 6, GY, 1, 1); }
@@ -1066,8 +1083,9 @@ function outlinedText(txt, x, y, size, fill, align = "left") {
 }
 function drawHUD() {
   if (G.mode === "title") return;
-  // progress bar, paw to cheese
-  const bx = 118, bw = 140, by = 9;
+  // progress bar, paw to cheese; on narrow upright phones it spans the top with labels beneath
+  const L = 8 + safeLeft, R = W - 8 - safeRight, top = 6 + safeTop, narrow = W < 320;
+  const bx = narrow ? L + 2 : Math.round(W * .31), bw = narrow ? R - L - 26 : Math.round(W * .36), by = top + 3;
   ctx.fillStyle = "#1e1420"; ctx.fillRect(bx - 2, by - 2, bw + 4, 10);
   ctx.fillStyle = "#2a3a6a"; ctx.fillRect(bx, by, bw, 6);
   const pct = G.mode === "won" ? 100 : progress();
@@ -1075,24 +1093,89 @@ function drawHUD() {
   ctx.fillStyle = "#fff0b3"; ctx.fillRect(bx, by, Math.round(bw * pct / 100), 2);
   if (G.best > 0 && !G.practice) { ctx.fillStyle = "#fff4e2"; ctx.fillRect(bx + Math.round(bw * G.best / 100) - 1, by - 3, 2, 12); }
   ctx.drawImage(IMG.cheese, bx + bw + 6, by - 4);
-  outlinedText(pct + "%", bx - 8, by - 3, 12, "#fff4e2", "right");
-  outlinedText("ATTEMPT " + G.attempts, 8, 6, 12, "#fff4e2");
-  if (G.practice) outlinedText("PRACTICE", 8, 20, 12, "#9ee06a");
-  // the big attempt banner floats in the world at the start of the course
+  if (narrow) {
+    outlinedText("ATTEMPT " + G.attempts, L, by + 12, 12, "#fff4e2");
+    outlinedText(pct + "%", bx + bw, by + 12, 12, "#fff4e2", "right");
+    if (G.practice) outlinedText("PRACTICE", L, by + 26, 12, "#9ee06a");
+  } else {
+    outlinedText(pct + "%", bx - 8, by - 3, 12, "#fff4e2", "right");
+    outlinedText("ATTEMPT " + G.attempts, L, top, 12, "#fff4e2");
+    if (G.practice) outlinedText("PRACTICE", L, top + 14, 12, "#9ee06a");
+  }
+}
+// Drawn inside the scene band: the attempt banner, and a tap hint in the dirt on tall screens
+function drawSceneText() {
+  if (G.mode === "title") return;
   const ax = sx(2);
   if (ax > -220 && (!G.practice || G.attempts === 1)) outlinedText("Attempt " + G.attempts, ax, 52, 24, "#fff4e2");
+  const deep = CH - OY;
+  if (FULL && deep - GY > 80 && G.attempts <= 3 && G.mode === "play") {
+    ctx.globalAlpha = .8;
+    outlinedText("TAP ANYWHERE TO JUMP", Math.round(W / 2), GY + Math.round((deep - GY) * .3), 12, "#fff4e2", "center");
+    ctx.globalAlpha = 1;
+  }
+}
+// Night sky that continues above the scene band on tall screens
+function drawSkyAbove() {
+  if (OY <= 0) return;
+  const cols = ["#0f1a40", "#0d1739", "#0b1432", "#09112b", "#070e25"], bh = Math.ceil(OY / cols.length);
+  cols.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(0, OY - (i + 1) * bh, W, bh + 1); });
+  for (const s of BG.topStars) {
+    if (s.y > OY || s.x > W) continue;
+    const tw = Math.sin(G.time * 1.6 + s.p) > .2;
+    ctx.fillStyle = tw ? "#fff4e2" : "#8ea3d0";
+    const y = Math.round(OY - s.y), x = Math.round(s.x);
+    ctx.fillRect(x, y, 1, 1);
+    if (s.big && tw) { ctx.fillRect(x - 1, y, 3, 1); ctx.fillRect(x, y - 1, 1, 3); }
+  }
+  // a crescent moon high over the river
+  const mx = Math.round(W * .72), my = Math.max(14, Math.round(OY * .35));
+  for (let j = -9; j <= 9; j++) for (let i = -9; i <= 9; i++) {
+    if (i * i + j * j > 81) continue;
+    if ((i + 4) * (i + 4) + (j - 2) * (j - 2) < 64) continue;
+    ctx.fillStyle = i * i + j * j > 64 ? "#d9d2b8" : "#fff6d6"; ctx.fillRect(mx + i, my + j, 1, 1);
+  }
 }
 function render() {
   ctx.save();
   if (G.shake > 0) ctx.translate(Math.round((Math.random() - .5) * 6), Math.round((Math.random() - .5) * 6));
+  drawSkyAbove();
+  ctx.translate(0, OY);
   drawBackground();
   drawGround();
   drawLevel();
   drawCorgi();
   drawParticles();
+  drawSceneText();
   ctx.restore();
   drawHUD();
 }
+
+/* ---------------- Screen fitting ---------------- */
+let FULL = false;
+const stageEl = $("stage"), safeProbe = $("safeProbe");
+const coarseMQ = window.matchMedia ? window.matchMedia("(pointer: coarse)") : { matches: false };
+function layout() {
+  FULL = !!coarseMQ.matches;
+  document.body.classList.toggle("full", FULL);
+  let cw = 384, ch = 216;
+  OY = 0; PLAYER_COL = 6; safeTop = safeLeft = safeRight = 0;
+  if (FULL) {
+    const r = stageEl.getBoundingClientRect(), a = r.width / Math.max(1, r.height);
+    if (a >= 1.2) { ch = 216; cw = Math.round(216 * a); }
+    else { cw = 256; ch = Math.round(256 / a); OY = Math.max(0, Math.round(ch * .64 - GY)); PLAYER_COL = 3; }
+    const sc = ch / Math.max(1, r.height), cs = getComputedStyle(safeProbe);
+    safeTop = Math.round(parseFloat(cs.paddingTop) * sc) || 0;
+    safeLeft = Math.round(parseFloat(cs.paddingLeft) * sc) || 0;
+    safeRight = Math.round(parseFloat(cs.paddingRight) * sc) || 0;
+  }
+  W = cw; CH = ch; VIEW_TILES = W / T;
+  if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; ctx.imageSmoothingEnabled = false; }
+}
+window.addEventListener("resize", layout);
+window.addEventListener("orientationchange", () => setTimeout(layout, 120));
+coarseMQ.addEventListener?.("change", layout);
+if (window.ResizeObserver) new ResizeObserver(layout).observe(stageEl);
 function loop(ts) {
   const dt = Math.min(.05, (ts - (last || ts)) / 1000); last = ts;
   update(dt); render();
@@ -1103,6 +1186,7 @@ function loop(ts) {
 function start(data) {
   if (data && typeof data.best === "number") G.best = Math.max(G.best, data.best);
   updateBestLine();
+  layout();
   G.run = newRun(); G.camX = -PLAYER_COL;
   if (document.fonts && document.fonts.load) document.fonts.load("700 12px 'Pixelify Sans'").catch(() => {});
   requestAnimationFrame(loop);
